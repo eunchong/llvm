@@ -418,7 +418,8 @@ static ShadowMapping getShadowMapping(Triple &TargetTriple, int LongSize,
       Mapping.Offset = kDefaultShadowOffset64;
   }
 
-  Mapping.Scale = kDefaultShadowScale;
+  // Mapping.Scale = kDefaultShadowScale;
+  Mapping.Scale = 3;
   if (ClMappingScale.getNumOccurrences() > 0) {
     Mapping.Scale = ClMappingScale;
   }
@@ -543,6 +544,8 @@ struct AddressSanitizer : public FunctionPass {
   Function *AsanErrorCallbackSized[2][2];
   Function *AsanMemoryAccessCallbackSized[2][2];
   Function *AsanMemmove, *AsanMemcpy, *AsanMemset;
+  Function *AsanStorePrintf;
+  Function *AsanLoadPrintf;
   InlineAsm *EmptyAsm;
   GlobalsMetadata GlobalsMD;
   DenseMap<AllocaInst *, bool> ProcessedAllocas;
@@ -1142,6 +1145,12 @@ void AddressSanitizer::instrumentAddress(Instruction *OrigIns,
   Value *AddrLong = IRB.CreatePointerCast(Addr, IntptrTy);
   size_t AccessSizeIndex = TypeSizeToSizeIndex(TypeSize);
 
+  if(IsWrite)
+    IRB.CreateCall(AsanStorePrintf, {AddrLong, ConstantInt::get(IRB.getInt32Ty(), Exp)});
+  else
+    IRB.CreateCall(AsanLoadPrintf, {AddrLong, ConstantInt::get(IRB.getInt32Ty(), Exp)});
+
+
   if (UseCalls) {
     if (Exp == 0)
       IRB.CreateCall(AsanMemoryAccessCallback[IsWrite][0][AccessSizeIndex],
@@ -1668,6 +1677,17 @@ void AddressSanitizer::initializeCallbacks(Module &M) {
       }
     }
   }
+
+
+  AsanStorePrintf =
+        checkSanitizerInterfaceFunction(M.getOrInsertFunction(
+            "__asan_store_printf",
+            IRB.getVoidTy(), IntptrTy, Type::getInt32Ty(*C), nullptr));
+  
+  AsanLoadPrintf =
+        checkSanitizerInterfaceFunction(M.getOrInsertFunction(
+            "__asan_load_printf",
+            IRB.getVoidTy(), IntptrTy, Type::getInt32Ty(*C), nullptr));
 
   const std::string MemIntrinCallbackPrefix =
       CompileKernel ? std::string("") : ClMemoryAccessCallbackPrefix;
