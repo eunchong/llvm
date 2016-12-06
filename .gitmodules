@@ -1,0 +1,4 @@
+[submodule "projects/compiler-rt"]
+	path = projects/compiler-rt
+	url = https://github.com/eunchong/compiler-rt
+	branch = JSMTrace
