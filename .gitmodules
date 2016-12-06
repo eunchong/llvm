@@ -2,3 +2,7 @@
 	path = projects/compiler-rt
 	url = https://github.com/eunchong/compiler-rt
 	branch = JSMTrace
+[submodule "tools/clang"]
+	path = tools/clang
+	url = https://github.com/eunchong/clang
+	branch = JSMTrace
